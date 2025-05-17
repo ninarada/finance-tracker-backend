@@ -5,6 +5,8 @@ const cors = require('cors');
 const path = require('path');
 
 const userRoutes = require('./routes/userRoutes');
+const receiptRoutes = require('./routes/receiptRoutes');
+
 const { errorHandler } = require('./middleware/errorMiddleware');
 
 dotenv.config();
@@ -15,7 +17,8 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 app.use('/api/users', userRoutes);
-  
+app.use('/api/receipts', receiptRoutes);
+
 app.use(errorHandler);
 
 connectDB().then(async () => {
