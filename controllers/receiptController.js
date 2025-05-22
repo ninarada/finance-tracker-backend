@@ -55,7 +55,53 @@ const getReceipts = async (req, res) => {
     }
 }
 
+// @desc    Get all items for the selected category
+// @route   GET /api/receipts/getCategory
+// @access  Private
+const getCategory = async (req, res) => {
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const category = req.query.category;
+
+    if (!category) {
+        return res.status(400).json({ message: "Category query parameter is required." });
+    }
+    
+    try {
+        const filteredItems = await Receipt.aggregate([
+            { $match: { user: req.user._id } },
+            { $unwind: "$items" },
+            {
+                $match: {
+                  $expr: {
+                    $eq: [
+                      { $toLower: "$items.category" },
+                      category.toLowerCase() 
+                    ]
+                  }
+                }
+              },
+            {
+                $addFields: {
+                  "items.receiptId": "$_id"
+                }
+            },
+            {
+              $replaceRoot: { newRoot: "$items" } 
+            }
+        ]);
+
+        res.status(200).json(filteredItems);
+    } catch (error) {
+      console.error("Error fetching category items:", error);
+      res.status(500).json({ message: "Server error while fetching category items." });
+    }
+}
+
 module.exports = { 
     createReceipt,
     getReceipts,
+    getCategory,
 };
