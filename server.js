@@ -4,12 +4,15 @@ const connectDB = require('./config/db');
 const cors = require('cors');
 const path = require('path');
 
+dotenv.config();
+
 const userRoutes = require('./routes/userRoutes');
 const receiptRoutes = require('./routes/receiptRoutes');
+const gcloudRoutes = require('./routes/gcloudRoutes');
 
 const { errorHandler } = require('./middleware/errorMiddleware');
 
-dotenv.config();
+
 
 const app = express();
 
@@ -18,6 +21,7 @@ app.use(express.json({ limit: '10mb' }));
 
 app.use('/api/users', userRoutes);
 app.use('/api/receipts', receiptRoutes);
+app.use('/api/gcloud', gcloudRoutes); 
 
 app.use(errorHandler);
 

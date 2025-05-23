@@ -166,12 +166,13 @@ const updateMyProfile = async (req, res) => {
   const user = await User.findById(req.user._id);
 
   if (user) {
-    const { name, surname, location, bio } = req.body;
+    const { name, surname, location, bio, photo } = req.body;
 
     user.name = name || user.name;
     user.surname = surname || user.surname;
     user.location = location || user.location;
     user.bio = bio || user.bio;
+    user.photo = photo || user.photo;
 
     try {
       const updatedUser = await user.save();
