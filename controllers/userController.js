@@ -92,6 +92,7 @@ const getMyProfile = async (req, res) => {
         location: user.location,
         bio: user.bio,
         joined: user.createdAt,
+        categories: user.categories,
       });
     } else {
       res.status(404);
@@ -130,11 +131,13 @@ const getUserStats = async (req, res) => {
       totalSpent += receipt.totalAmount || 0;
 
       receipt.items.forEach((item) => {
-        if (item.category) {
-          if (!categoryTotals[item.category]) {
-            categoryTotals[item.category] = 0;
-          }
-          categoryTotals[item.category] += item.totalPrice;
+        if (Array.isArray(item.categories)) {
+          item.categories.forEach((category) => {
+            if (!categoryTotals[category]) {
+              categoryTotals[category] = 0;
+            }
+            categoryTotals[category] += item.totalPrice / item.categories.length;
+          });
         }
       });
     });
@@ -186,6 +189,7 @@ const updateMyProfile = async (req, res) => {
         location: updatedUser.location,
         bio: updatedUser.bio,
         joined: updatedUser.createdAt,
+        categories: updatedUser.categories,
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to update profile." });
@@ -196,6 +200,101 @@ const updateMyProfile = async (req, res) => {
   }
 };
 
+// @desc    Create a new category
+// @route   POST /api/users/newCategory
+// @access  Private
+const createCategory = async (req, res) => {
+  const { name } = req.body;
+
+  if (!req.user || !req.user._id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (!name || typeof name !== 'string' || name.trim() === '') {
+    return res.status(400).json({ message: "Category name is required" });
+  }
+
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const trimmedName = name.trim();
+
+    const categoryExists = user.categories.some(
+      cat => cat.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (categoryExists) {
+      return res.status(400).json({ message: "Category with that name already exists." });
+    }
+
+    user.categories.push(trimmedName);
+    await user.save();
+
+    res.status(201).json({ message: "Category created successfully", categories: user.categories });
+  } catch (error) {
+    console.error("Error creating category:", error);
+    res.status(500).json({ message: "Server error while creating category." });
+  }
+};
+
+// @desc    Delete selected category
+// @route   DELETE /api/users/deleteCategory?name=Groceries
+// @access  Private
+const deleteCategory = async (req, res) => {
+  const name = req.query.name;
+
+  if (!req.user || !req.user._id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (!name || typeof name !== 'string' || name.trim() === '') {
+    return res.status(400).json({ message: "Category name is required" });
+  }
+
+  try {
+    const trimmedName = name.trim();
+
+    // 1. Remove category from user's list
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const initialLength = user.categories.length;
+    user.categories = user.categories.filter(
+      cat => cat.toLowerCase() !== trimmedName.toLowerCase()
+    );
+
+    if (user.categories.length === initialLength) {
+      return res.status(404).json({ message: "Category not found in user profile" });
+    }
+
+    await user.save();
+
+    // 2. Remove category from each item's categories array in all receipts
+    const updateResult = await Receipt.updateMany(
+      {
+        user: req.user._id,
+        "items.categories": trimmedName
+      },
+      {
+        $pull: { "items.$[].categories": trimmedName }
+      }
+    );
+
+    res.status(200).json({
+      message: `Category '${trimmedName}' deleted successfully`,
+      updatedReceipts: updateResult.modifiedCount,
+      remainingCategories: user.categories,
+    });
+
+  } catch (error) {
+    console.error("Error deleting category:", error);
+    res.status(500).json({ message: "Server error while deleting category." });
+  }
+}
 
 module.exports = {
   registerUser,
@@ -203,4 +302,6 @@ module.exports = {
   getMyProfile,
   getUserStats,
   updateMyProfile,
+  createCategory,
+  deleteCategory,
 };

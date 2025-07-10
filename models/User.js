@@ -36,6 +36,20 @@ const userSchema = mongoose.Schema({
     type: String, 
     default: '/public/images/profile-picture.png', 
   },
+  categories: {
+    type: [String],
+    default: [  
+      "Groceries",
+      "Clothes",
+      "Electronics",
+      "Health & Beauty",
+      "Restaurants",
+      "Pharmacy",
+      "Toys & Games",
+      "Fitness",
+      "Other"
+    ],
+  }
 }, {
   timestamps: true,
 });

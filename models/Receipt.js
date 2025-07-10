@@ -5,7 +5,7 @@ const itemSchema = new mongoose.Schema({
     quantity: { type: Number, required: true },
     unitPrice: { type: Number, required: true },
     totalPrice: { type: Number, required: true },
-    category: { type: String, required: false },
+    categories: [{ type: String, required: false }],
 });
 
 const receiptSchema = new mongoose.Schema({
@@ -40,7 +40,7 @@ const receiptSchema = new mongoose.Schema({
         type: String, 
         required: false,
     },
-});
+}, { timestamps: true });
 
 receiptSchema.pre('save', function (next) {
     this.totalAmount = this.items.reduce((sum, item) => sum + item.totalPrice, 0);
