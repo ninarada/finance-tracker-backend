@@ -7,7 +7,8 @@ const {
     getUserStats, 
     updateMyProfile, 
     createCategory, 
-    deleteCategory } = require('../controllers/userController');
+    deleteCategory,
+    addCategoryToFavourites } = require('../controllers/userController');
 const { protect } = require('../middleware/authMiddleware');
 
 // Public routes
@@ -21,6 +22,7 @@ router.get('/stats', protect, getUserStats);                // GET /api/users/st
 router.put('/updateProfile', protect, updateMyProfile);     // PUT /api/users/updateProfile
 
 router.post('/newCategory', protect, createCategory);       // POST /api/users/newCategory - Create a new category
+router.post('/addCategoryToFavourites', protect, addCategoryToFavourites);         // POST /api/users/addCategoryToFavourites
 
 router.delete('/deleteCategory', protect, deleteCategory);  // DELETE /api/users/deleteCategory?name=Groceries - Delete selected category
 

@@ -39,6 +39,7 @@ const registerUser = async (req, res) => {
       username: user.username,
       email: user.email,
       token: generateToken(user._id),
+      favouriteCategories: user.favouriteCategories,
     });
   } else {
     res.status(400);
@@ -64,6 +65,7 @@ const authUser = async (req, res, next) => {
         username: user.username,
         email: user.email,
         token: generateToken(user._id),
+        favouriteCategories: user.favouriteCategories,
       });
     } else {
       const error = new Error('Invalid username or password');
@@ -93,6 +95,7 @@ const getMyProfile = async (req, res) => {
         bio: user.bio,
         joined: user.createdAt,
         categories: user.categories,
+        favouriteCategories: user.favouriteCategories,
       });
     } else {
       res.status(404);
@@ -190,6 +193,7 @@ const updateMyProfile = async (req, res) => {
         bio: updatedUser.bio,
         joined: updatedUser.createdAt,
         categories: updatedUser.categories,
+        favouriteCategories: updatedUser.favouriteCategories,
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to update profile." });
@@ -271,6 +275,10 @@ const deleteCategory = async (req, res) => {
       return res.status(404).json({ message: "Category not found in user profile" });
     }
 
+    user.favouriteCategories = user.favouriteCategories.filter(
+      favCat => favCat.toLowerCase() !== trimmedName.toLowerCase()
+    );
+
     await user.save();
 
     // 2. Remove category from each item's categories array in all receipts
@@ -296,6 +304,62 @@ const deleteCategory = async (req, res) => {
   }
 }
 
+// @desc    Add a category to user's favouriteCategories
+// @route   POST /api/users/addCategoryToFavourites
+// @access  Private
+const addCategoryToFavourites = async (req, res) => {
+  const { categoryName, add } = req.body;
+
+  if (!req.user || !req.user._id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  if (!categoryName || typeof categoryName !== 'string' || categoryName.trim() === '') {
+    return res.status(400).json({ message: "Category name is required" });
+  }
+  if (typeof add !== 'boolean') {
+    return res.status(400).json({ message: "'add' flag must be a boolean" });
+  }
+
+  try {
+    const trimmedName = categoryName.trim();
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const categoryExists = user.categories.some(                // Check if category exists in user's categories list
+      cat => cat.toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (!categoryExists) {
+      return res.status(400).json({ message: "Category does not exist in user's categories" });
+    }
+
+    if (add) {
+      if (user.favouriteCategories.some(favCat => favCat.toLowerCase() === trimmedName.toLowerCase())) {
+        return res.status(400).json({ message: "Category is already a favourite" });
+      }
+      if (user.favouriteCategories.length >= 4) {
+        return res.status(400).json({ message: "Favourites limit reached. You can't add more." });
+      }
+      user.favouriteCategories.push(trimmedName);
+    } else {
+      user.favouriteCategories = user.favouriteCategories.filter(
+        favCat => favCat.toLowerCase() !== trimmedName.toLowerCase()
+      );
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      message: add
+        ? `Category '${trimmedName}' added to favourites`
+        : `Category '${trimmedName}' removed from favourites`,
+      favouriteCategories: user.favouriteCategories,
+      favouritesCount: user.favouriteCategories.length,
+    });
+  } catch (error) {
+    console.error("Error adding favourite category:", error);
+    res.status(500).json({ message: "Server error while adding favourite category." });
+  }
+};
+
 module.exports = {
   registerUser,
   authUser,
@@ -304,4 +368,5 @@ module.exports = {
   updateMyProfile,
   createCategory,
   deleteCategory,
+  addCategoryToFavourites,
 };

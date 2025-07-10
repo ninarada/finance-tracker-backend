@@ -49,7 +49,11 @@ const userSchema = mongoose.Schema({
       "Fitness",
       "Other"
     ],
-  }
+  },
+  favouriteCategories: {
+    type: [String],
+    default: [],
+  },
 }, {
   timestamps: true,
 });
