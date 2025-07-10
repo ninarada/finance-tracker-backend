@@ -139,7 +139,7 @@ const getUserStats = async (req, res) => {
             if (!categoryTotals[category]) {
               categoryTotals[category] = 0;
             }
-            categoryTotals[category] += item.totalPrice / item.categories.length;
+            categoryTotals[category] += item.totalPrice;
           });
         }
       });
@@ -172,13 +172,16 @@ const updateMyProfile = async (req, res) => {
   const user = await User.findById(req.user._id);
 
   if (user) {
-    const { name, surname, location, bio, photo } = req.body;
+    const { name, surname, location, bio } = req.body;
 
     user.name = name || user.name;
     user.surname = surname || user.surname;
     user.location = location || user.location;
     user.bio = bio || user.bio;
-    user.photo = photo || user.photo;
+    
+    if (req.file) {
+      user.photo = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    }
 
     try {
       const updatedUser = await user.save();

@@ -17,6 +17,8 @@ const app = express();
 app.use(cors()); 
 app.use(express.json({ limit: '10mb' }));
 
+app.use("/uploads", express.static("public/uploads"));
+
 app.use('/api/users', userRoutes);
 app.use('/api/receipts', receiptRoutes);
 app.use('/api/gcloud', gcloudRoutes); 
