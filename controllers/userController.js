@@ -5,7 +5,7 @@ const generateToken = require('../utils/generateToken');
 // @desc    Register a new user
 // @route   POST /api/users/register
 const registerUser = async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, name, surname } = req.body;
 
   const userExists = await User.findOne({ email });
 
@@ -27,10 +27,15 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Username already in use." });
   }
 
+  const photo = `${req.protocol}://${req.get("host")}/uploads/123.png`;
+
   const user = await User.create({
     username,
     email,
     password,
+    name,
+    surname,
+    photo,
   });
 
   if (user) {
@@ -38,6 +43,8 @@ const registerUser = async (req, res) => {
       _id: user._id,
       username: user.username,
       email: user.email,
+      name: user.name,
+      surname: user.surname,
       token: generateToken(user._id),
       favouriteCategories: user.favouriteCategories,
     });
@@ -363,6 +370,62 @@ const addCategoryToFavourites = async (req, res) => {
   }
 };
 
+// @desc    Delete user account
+// @route   DELETE /api/users/deleteUser
+// @access  Private
+const deleteUser = async (req, res) => {
+  const { password } = req.query;
+
+  if (!req.user || !req.user._id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+    await Receipt.deleteMany({ user: user._id });
+    await user.deleteOne();
+
+    res.status(200).json({ message: "User account and related receipts deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    res.status(500).json({ message: "Server error while deleting user" });
+  }
+}
+
+// @desc    Change user password
+// @route   PUT /api/users/changePassword
+// @access  Private
+const changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!req.user || !req.user._id) { return res.status(401).json({ message: "Unauthorized" }); }
+  if (!currentPassword || !newPassword) { return res.status(400).json({ message: "Both current and new passwords are required" }); }
+  if (newPassword.length < 6) { return res.status(400).json({ message: "New password must be at least 6 characters long" }); }
+
+  try {
+    const user = await User.findById(req.user._id).select("+password");
+    if (!user) { return res.status(404).json({ message: "User not found" }); }
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) { return res.status(401).json({ message: "Current password is incorrect" }); }
+
+    user.password = newPassword; 
+    await user.save();
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(500).json({ message: "Server error while changing password" });
+  }
+};
+
 module.exports = {
   registerUser,
   authUser,
@@ -372,4 +435,6 @@ module.exports = {
   createCategory,
   deleteCategory,
   addCategoryToFavourites,
+  deleteUser,
+  changePassword
 };
