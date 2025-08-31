@@ -175,10 +175,35 @@ const getCategoryItems = async (req, res) => {
     }
 }
 
+
+// @desc    Delete selected receipt
+// @route   DELETE /api/receipts/deleteReceipt
+// @access  Private
+const deleteReceipt = async (req, res) => {
+  const selectedId = req.query.selectedId;
+
+  if (!req.user || !req.user._id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const receipt = await Receipt.findOne({ _id: selectedId, user: req.user._id });
+    if (!receipt) {
+      return res.status(404).json({ message: 'Receipt not found.' });
+    }
+    await receipt.deleteOne();
+    return res.status(200).json({ message: 'Receipt deleted.' });
+  } catch (error) {
+    console.error("Error deleting receipt:", error);
+    res.status(500).json({ message: "Server error while deleting receipt." });
+  }
+}
+
 module.exports = { 
     createReceipt,
     updateReceipt,
     getReceipts,
     getReceiptById,
     getCategoryItems,
+    deleteReceipt
 };
